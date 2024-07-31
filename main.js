@@ -9,18 +9,20 @@ const windowSize = {
 class GameScene extends Phaser.Scene {
   constructor() {
     super('super-game');
+
     this.isSpinning = false;
     this.spinStartTime = 0;
-    this.spinDuration = 2000; // Total duration of spin in milliseconds
-    this.spinSpeed = 10; // Speed at which symbols move (adjust as needed)
-    this.columnStopDelay = 400; // Delay between stopping columns in milliseconds
+    this.spinDuration = 2000; // Total duration of spin
+    this.spinSpeed = 15; // Speed at which symbols move
+    this.columnStopDelay = 400; // Delay between stopping columns
     this.columnStopTimes = []; // Array to track when each column should stop
-    this.balance = 1000; // Example initial balance
+    this.balance = 1000; // Starting balance
     this.spinCost = 100;
     this.autoSpins = 10;
     this.isAutoSpinning = false;
     this.autoSpinInterval = null;
 
+    //Payout table
     this.payoutTable = {
       '9': { 3: 10, 4: 20, 5: 30 },
       '10': { 3: 15, 4: 25, 5: 35 },
@@ -46,7 +48,7 @@ class GameScene extends Phaser.Scene {
     this.load.image('J', 'SlotGame/assets/J.png');
     this.load.image('Q', 'SlotGame/assets/Q.png');
 
-    // Load glowing images for all symbols
+    // Load connect images for all symbols
     this.load.image('9_connect', 'SlotGame/assets/9_connect.png');
     this.load.image('10_connect', 'SlotGame/assets/10_connect.png');
     this.load.image('A_connect', 'SlotGame/assets/A_connect.png');
@@ -56,6 +58,7 @@ class GameScene extends Phaser.Scene {
     this.load.image('J_connect', 'SlotGame/assets/J_connect.png');
     this.load.image('Q_connect', 'SlotGame/assets/Q_connect.png');
 
+    //load some sounds
     this.load.audio('anyWin', 'SlotGame/sounds/anyWin.wav');
     this.load.audio('spinning', 'SlotGame/sounds/spinning.wav');
 
@@ -79,7 +82,7 @@ class GameScene extends Phaser.Scene {
       { '9': 0.1, '10': 0.1, 'A': 0.1, 'K': 0.1, 'Seven': 0.2, 'Bell': 0.1, 'J': 0.1, 'Q': 0.1 }  // Reel 4
     ];
 
-    // // Define symbols and their probabilities for each reel
+    // // TEST SYMBOLS
     // this.symbolProbabilities = [
     //   { '9': 0, '10': 0, 'A': 0, 'K': 0, 'Seven': 1, 'Bell': 0, 'J': 0, 'Q': 0 }, // Reel 0
     //   { '9': 0, '10': 0, 'A': 0, 'K': 0, 'Seven': 1, 'Bell': 0, 'J': 0, 'Q': 0 }, // Reel 1
@@ -107,6 +110,7 @@ class GameScene extends Phaser.Scene {
       this.reels.push(reel);
     }
 
+    //Spin button
     document.getElementById('spinButton').addEventListener('click', () => {
 
       buttonSound.play(); 
@@ -117,7 +121,7 @@ class GameScene extends Phaser.Scene {
       }
     });
 
-    
+    //Add balance button
     document.getElementById('addBalanceButton').addEventListener('click', () => {
       
     this.balance += 1000;  
@@ -126,6 +130,7 @@ class GameScene extends Phaser.Scene {
 
     });
 
+    // Auto spin button
     document.getElementById('autoSpinButton').addEventListener('click', async () => {
       // Toggle the auto spin flag
       this.isAutoSpinning = !this.isAutoSpinning;
@@ -156,8 +161,8 @@ class GameScene extends Phaser.Scene {
               }, 100); // Check every 100ms if the spin has finished
             });
     
-            // Add a 5-second delay between spins
-            await new Promise(resolve => setTimeout(resolve, 1000)); // Add a 5000ms (5 seconds) delay between spins
+            // Add delay between spins
+            await new Promise(resolve => setTimeout(resolve, 1000));
     
             this.autoSpins--;
     
@@ -214,6 +219,8 @@ class GameScene extends Phaser.Scene {
   }
   
   update() {
+
+    //Move each reel and randomize spins
     if (this.isSpinning) {
       this.reels.forEach((reel, col) => {
         if (this.time.now >= this.spinStartTime) {
@@ -243,23 +250,26 @@ class GameScene extends Phaser.Scene {
   
       if (this.reels.every((_, col) => this.time.now >= this.columnStopTimes[col])) {
         this.isSpinning = false;
-        const { payout, winningSymbols } = this.checkForWin();
-        this.updateBalance(payout);
+        const payout = this.checkForWin(); // Check for wins
+        this.updateBalance(payout); // Update balance with the payout
   
-        // Replace winning symbols with their _connect variants
-        this.reels.forEach((reel) => {
-          reel.forEach((symbol) => {
-            if (winningSymbols.has(symbol.texture.key)) {
-              symbol.setTexture(symbol.texture.key + '_connect');
-            }
-          });
-        });
+        // Apply glowing textures to winning symbols
+        this.applyWinningTextures();
       }
     }
-    
-    if(!this.isSpinning) {
+  
+    if (!this.isSpinning) {
       this.spinning.play();
     }
+  }
+  
+  applyWinningTextures() {
+    this.winningSymbols.forEach(winning => {
+      winning.positions.forEach(([row, col]) => {
+        const symbol = this.reels[col][row];
+        symbol.setTexture(`${winning.symbol}_connect`); // Set glowing texture
+      });
+    });
   }
 
   getSymbolBasedOnProbability(probabilities) {
@@ -281,157 +291,84 @@ class GameScene extends Phaser.Scene {
 
   checkForWin() {
     let payout = 0;
+    this.winningSymbols = []; // Array to store winning symbols with their positions
 
     // Check each row
     for (let row = 0; row < this.rows; row++) {
-      let rowSymbols = this.reels.map(reel => reel[row].texture.key); // Get symbols from each reel for the specific row
-      console.log(`Row ${row} symbols:`, rowSymbols);
-  
-      let count = 1;
-      let lastSymbol = rowSymbols[0];
-  
-      for (let i = 1; i < rowSymbols.length; i++) {
-        if (rowSymbols[i] === lastSymbol) {
-          count++;
-        } else {
-          if (count >= 3) {
-            payout += this.calculatePayout(lastSymbol, count);
-            console.log(`Payout for ${count} ${lastSymbol}s in row ${row}: ${this.calculatePayout(lastSymbol, count)}`);
-          }
-          count = 1; // Reset count for the new symbol
-          lastSymbol = rowSymbols[i];
+        let rowSymbols = this.reels.map(reel => reel[row].texture.key);
+        let count = 1;
+        let lastSymbol = rowSymbols[0];
+        let positions = [[row, 0]];
+
+        //Loop through each row
+        for (let i = 1; i < rowSymbols.length; i++) {
+            if (rowSymbols[i] === lastSymbol) {
+                count++;
+                positions.push([row, i]);
+            } else {
+                if (count >= 3) {
+                    const winPayout = this.calculatePayout(lastSymbol, count);
+                    payout += winPayout;
+                    this.winningSymbols.push({ symbol: lastSymbol, positions });
+                    console.log(`Row ${row} Win: ${count} ${lastSymbol}s at positions ${JSON.stringify(positions)}. Payout: ${winPayout}`);
+                }
+                count = 1;
+                lastSymbol = rowSymbols[i];
+                positions = [[row, i]];
+            }
         }
-      }
-  
-      // Final check for the last set of symbols in the row
-      if (count >= 3) {
-        payout += this.calculatePayout(lastSymbol, count);
-        console.log(`Payout for ${count} ${lastSymbol}s in row ${row}: ${this.calculatePayout(lastSymbol, count)}`);
-      }
+
+        if (count >= 3) {
+            const winPayout = this.calculatePayout(lastSymbol, count);
+            payout += winPayout;
+            this.winningSymbols.push({ symbol: lastSymbol, positions });
+            console.log(`Row ${row} Win: ${count} ${lastSymbol}s at positions ${JSON.stringify(positions)}. Payout: ${winPayout}`);
+        }
     }
-  
-    // Check the first diagonal line
-    const diagonal1Positions = [[0,0], [1,1], [2,2], [1,3], [0,4]];
-    let diag1Symbols = diagonal1Positions.map(([row, col]) => {
-      const symbol = this.reels[col][row].texture.key;
-      console.log(`Diagonal 1 Position [${row}, ${col}] Symbol: ${symbol}`);
-      return symbol;
+
+    // Check diagonals
+    const diagonals = [
+        { name: 'Diagonal 1', positionsArray: [[0, 0], [1, 1], [2, 2], [1, 3], [0, 4]] },
+        { name: 'Diagonal 2', positionsArray: [[2, 0], [1, 1], [0, 2], [1, 3], [2, 4]] },
+        { name: 'Diagonal 3', positionsArray: [[0, 0], [1, 1], [2, 2], [2, 3], [2, 4]] },
+        { name: 'Diagonal 4', positionsArray: [[2, 0], [1, 1], [0, 2], [0, 3], [0, 4]] }
+    ];
+
+    //Loop through each Diagonal
+    diagonals.forEach(({ name, positionsArray }) => {
+        let diagSymbols = positionsArray.map(([row, col]) => this.reels[col][row].texture.key);
+        let count = 1;
+        let lastDiagSymbol = diagSymbols[0];
+        let diagPositions = [positionsArray[0]];
+
+        for (let i = 1; i < diagSymbols.length; i++) {
+            if (diagSymbols[i] === lastDiagSymbol) {
+                count++;
+                diagPositions.push(positionsArray[i]);
+            } else {
+                if (count >= 3) {
+                    const winPayout = this.calculatePayout(lastDiagSymbol, count);
+                    payout += winPayout;
+                    this.winningSymbols.push({ symbol: lastDiagSymbol, positions: diagPositions });
+                    console.log(`${name} Win: ${count} ${lastDiagSymbol}s at positions ${JSON.stringify(diagPositions)}. Payout: ${winPayout}`);
+                }
+                count = 1;
+                lastDiagSymbol = diagSymbols[i];
+                diagPositions = [positionsArray[i]];
+            }
+        }
+
+        if (count >= 3) {
+            const winPayout = this.calculatePayout(lastDiagSymbol, count);
+            payout += winPayout;
+            this.winningSymbols.push({ symbol: lastDiagSymbol, positions: diagPositions });
+            console.log(`${name} Win: ${count} ${lastDiagSymbol}s at positions ${JSON.stringify(diagPositions)}. Payout: ${winPayout}`);
+        }
     });
-    
-    let diag1Count = 1;
-    let lastDiag1Symbol = diag1Symbols[0];
-  
-    for (let i = 1; i < diag1Symbols.length; i++) {
-      if (diag1Symbols[i] === lastDiag1Symbol) {
-        diag1Count++;
-      } else {
-        if (diag1Count >= 3) {
-          payout += this.calculatePayout(lastDiag1Symbol, diag1Count);
-          console.log(`Payout for ${diag1Count} ${lastDiag1Symbol}s in diagonal 1: ${this.calculatePayout(lastDiag1Symbol, diag1Count)}`);
-        }
-        diag1Count = 1; // Reset count for the new symbol
-        lastDiag1Symbol = diag1Symbols[i];
-      }
-    }
-  
-    // Final check for the last set of symbols in the diagonal
-    if (diag1Count >= 3) {
-      payout += this.calculatePayout(lastDiag1Symbol, diag1Count);
-      console.log(`Payout for ${diag1Count} ${lastDiag1Symbol}s in diagonal 1: ${this.calculatePayout(lastDiag1Symbol, diag1Count)}`);
-    }
-  
-    // Check the second diagonal line
-    const diagonal2Positions = [[2,0], [1,1], [0,2], [1,3], [2,4]];
-    let diag2Symbols = diagonal2Positions.map(([row, col]) => {
-      const symbol = this.reels[col][row].texture.key;
-      console.log(`Diagonal 2 Position [${row}, ${col}] Symbol: ${symbol}`);
-      return symbol;
-    });
-  
-    let diag2Count = 1;
-    let lastDiag2Symbol = diag2Symbols[0];
-  
-    for (let i = 1; i < diag2Symbols.length; i++) {
-      if (diag2Symbols[i] === lastDiag2Symbol) {
-        diag2Count++;
-      } else {
-        if (diag2Count >= 3) {
-          payout += this.calculatePayout(lastDiag2Symbol, diag2Count);
-          console.log(`Payout for ${diag2Count} ${lastDiag2Symbol}s in diagonal 2: ${this.calculatePayout(lastDiag2Symbol, diag2Count)}`);
-        }
-        diag2Count = 1; // Reset count for the new symbol
-        lastDiag2Symbol = diag2Symbols[i];
-      }
-    }
-  
-    // Final check for the last set of symbols in the diagonal
-    if (diag2Count >= 3) {
-      payout += this.calculatePayout(lastDiag2Symbol, diag2Count);
-      console.log(`Payout for ${diag2Count} ${lastDiag2Symbol}s in diagonal 2: ${this.calculatePayout(lastDiag2Symbol, diag2Count)}`);
-    }
-  
-    // Check the third diagonal line
-  const diagonal3Positions = [[0,0], [1,1], [2,2], [2,3], [2,4]];
-  let diag3Symbols = diagonal3Positions.map(([row, col]) => {
-    const symbol = this.reels[col][row].texture.key;
-    console.log(`Diagonal 3 Position [${row}, ${col}] Symbol: ${symbol}`);
-    return symbol;
-  });
 
-  let diag3Count = 1;
-  let lastDiag3Symbol = diag3Symbols[0];
-
-  for (let i = 1; i < diag3Symbols.length; i++) {
-    if (diag3Symbols[i] === lastDiag3Symbol) {
-      diag3Count++;
-    } else {
-      if (diag3Count >= 3) {
-        payout += this.calculatePayout(lastDiag3Symbol, diag3Count);
-        console.log(`Payout for ${diag3Count} ${lastDiag3Symbol}s in diagonal 3: ${this.calculatePayout(lastDiag3Symbol, diag3Count)}`);
-      }
-      diag3Count = 1; // Reset count for the new symbol
-      lastDiag3Symbol = diag3Symbols[i];
-    }
-  }
-
-  // Final check for the last set of symbols in the diagonal
-  if (diag3Count >= 3) {
-    payout += this.calculatePayout(lastDiag3Symbol, diag3Count);
-    console.log(`Payout for ${diag3Count} ${lastDiag3Symbol}s in diagonal 3: ${this.calculatePayout(lastDiag3Symbol, diag3Count)}`);
-  }
-
-  // Check the fourth diagonal line
-  const diagonal4Positions = [[2,0], [1,1], [0,2], [0,3], [0,4]];
-  let diag4Symbols = diagonal4Positions.map(([row, col]) => {
-    const symbol = this.reels[col][row].texture.key;
-    console.log(`Diagonal 4 Position [${row}, ${col}] Symbol: ${symbol}`);
-    return symbol;
-  });
-
-  let diag4Count = 1;
-  let lastDiag4Symbol = diag4Symbols[0];
-
-  for (let i = 1; i < diag4Symbols.length; i++) {
-    if (diag4Symbols[i] === lastDiag4Symbol) {
-      diag4Count++;
-    } else {
-      if (diag4Count >= 3) {
-        payout += this.calculatePayout(lastDiag4Symbol, diag4Count);
-        console.log(`Payout for ${diag4Count} ${lastDiag4Symbol}s in diagonal 4: ${this.calculatePayout(lastDiag4Symbol, diag4Count)}`);
-      }
-      diag4Count = 1; // Reset count for the new symbol
-      lastDiag4Symbol = diag4Symbols[i];
-    }
-  }
-
-  // Final check for the last set of symbols in the diagonal
-  if (diag4Count >= 3) {
-    payout += this.calculatePayout(lastDiag4Symbol, diag4Count);
-    console.log(`Payout for ${diag4Count} ${lastDiag4Symbol}s in diagonal 4: ${this.calculatePayout(lastDiag4Symbol, diag4Count)}`);
-  }
-
-  return payout;
+    return payout;
 }
+
     
 calculatePayout(symbol, count) {
   if (this.payoutTable[symbol] && this.payoutTable[symbol][count]) {
@@ -455,11 +392,12 @@ updateBalance(amount) {
       
     // Make sure the win amount is visible
     winContainer.style.opacity = '1';
+    winContainer.style.fontSize = 16;
       
     // Hide the win amount after 0.5 seconds
     setTimeout(() => {
       winContainer.style.opacity = '0';
-    }, 1000);
+    }, 2000);
   }
 
 
