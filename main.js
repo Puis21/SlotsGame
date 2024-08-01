@@ -84,11 +84,11 @@ class GameScene extends Phaser.Scene {
 
     // // TEST SYMBOLS
     // this.symbolProbabilities = [
-    //   { '9': 0, '10': 0, 'A': 0, 'K': 0, 'Seven': 1, 'Bell': 0, 'J': 0, 'Q': 0 }, // Reel 0
-    //   { '9': 0, '10': 0, 'A': 0, 'K': 0, 'Seven': 1, 'Bell': 0, 'J': 0, 'Q': 0 }, // Reel 1
-    //   { '9': 0, '10': 0, 'A': 0, 'K': 0, 'Seven': 1, 'Bell': 0, 'J': 0, 'Q': 0 }, // Reel 2
-    //   { '9': 0, '10': 0, 'A': 0, 'K': 0, 'Seven': 1, 'Bell': 0, 'J': 0, 'Q': 0 }, // Reel 3
-    //   { '9': 0, '10': 0, 'A': 0, 'K': 0, 'Seven': 1, 'Bell': 0, 'J': 0, 'Q': 0 }  // Reel 4
+    //   { '9': 0, '10': 0, 'A': 0, 'K': 0, 'Seven': 0.5, 'Bell': 0.5, 'J': 0, 'Q': 0 }, // Reel 0
+    //   { '9': 0, '10': 0, 'A': 0, 'K': 0, 'Seven': 0.5, 'Bell': 0.5, 'J': 0, 'Q': 0 }, // Reel 1
+    //   { '9': 0, '10': 0, 'A': 0, 'K': 0, 'Seven': 0.5, 'Bell': 0.5, 'J': 0, 'Q': 0 }, // Reel 2
+    //   { '9': 0, '10': 0, 'A': 0, 'K': 0, 'Seven': 0.5, 'Bell': 0.5, 'J': 0, 'Q': 0 }, // Reel 3
+    //   { '9': 0, '10': 0, 'A': 0, 'K': 0, 'Seven': 0.5, 'Bell': 0.5, 'J': 0, 'Q': 0 }  // Reel 4
     // ];
 
     this.symbols = Object.keys(this.symbolProbabilities[0]); // All possible symbols
@@ -291,83 +291,57 @@ class GameScene extends Phaser.Scene {
 
   checkForWin() {
     let payout = 0;
-    this.winningSymbols = []; // Array to store winning symbols with their positions
+    this.winningSymbols = [];
 
-    // Check each row
-    for (let row = 0; row < this.rows; row++) {
-        let rowSymbols = this.reels.map(reel => reel[row].texture.key);
+    const checkLineWin = (positionsArray) => {
         let count = 1;
-        let lastSymbol = rowSymbols[0];
-        let positions = [[row, 0]];
+        let lastSymbol = this.reels[positionsArray[0][1]][positionsArray[0][0]].texture.key;
+        let positions = [positionsArray[0]];
 
-        //Loop through each row
-        for (let i = 1; i < rowSymbols.length; i++) {
-            if (rowSymbols[i] === lastSymbol) {
+        for (let i = 1; i < positionsArray.length; i++) {
+            const [row, col] = positionsArray[i];
+            if (this.reels[col][row].texture.key === lastSymbol) {
                 count++;
-                positions.push([row, i]);
+                positions.push([row, col]);
             } else {
-                if (count >= 3) {
+                if (count >= 3 && positions[0][1] === 0) {
                     const winPayout = this.calculatePayout(lastSymbol, count);
                     payout += winPayout;
                     this.winningSymbols.push({ symbol: lastSymbol, positions });
-                    console.log(`Row ${row} Win: ${count} ${lastSymbol}s at positions ${JSON.stringify(positions)}. Payout: ${winPayout}`);
                 }
                 count = 1;
-                lastSymbol = rowSymbols[i];
-                positions = [[row, i]];
+                lastSymbol = this.reels[col][row].texture.key;
+                positions = [[row, col]];
             }
         }
 
-        if (count >= 3) {
+        if (count >= 3 && positions[0][1] === 0) {
             const winPayout = this.calculatePayout(lastSymbol, count);
             payout += winPayout;
             this.winningSymbols.push({ symbol: lastSymbol, positions });
-            console.log(`Row ${row} Win: ${count} ${lastSymbol}s at positions ${JSON.stringify(positions)}. Payout: ${winPayout}`);
         }
+    };
+
+    // Check rows
+    for (let row = 0; row < this.rows; row++) {
+        const positionsArray = Array.from({ length: this.cols }, (_, col) => [row, col]);
+        checkLineWin(positionsArray);
     }
 
     // Check diagonals
     const diagonals = [
-        { name: 'Diagonal 1', positionsArray: [[0, 0], [1, 1], [2, 2], [1, 3], [0, 4]] },
-        { name: 'Diagonal 2', positionsArray: [[2, 0], [1, 1], [0, 2], [1, 3], [2, 4]] },
-        { name: 'Diagonal 3', positionsArray: [[0, 0], [1, 1], [2, 2], [2, 3], [2, 4]] },
-        { name: 'Diagonal 4', positionsArray: [[2, 0], [1, 1], [0, 2], [0, 3], [0, 4]] }
+        [[0, 0], [1, 1], [2, 2], [1, 3], [0, 4]],
+        [[2, 0], [1, 1], [0, 2], [1, 3], [2, 4]],
+        [[0, 0], [1, 1], [2, 2], [2, 3], [2, 4]],
+        [[2, 0], [1, 1], [0, 2], [0, 3], [0, 4]]
     ];
-
-    //Loop through each Diagonal
-    diagonals.forEach(({ name, positionsArray }) => {
-        let diagSymbols = positionsArray.map(([row, col]) => this.reels[col][row].texture.key);
-        let count = 1;
-        let lastDiagSymbol = diagSymbols[0];
-        let diagPositions = [positionsArray[0]];
-
-        for (let i = 1; i < diagSymbols.length; i++) {
-            if (diagSymbols[i] === lastDiagSymbol) {
-                count++;
-                diagPositions.push(positionsArray[i]);
-            } else {
-                if (count >= 3) {
-                    const winPayout = this.calculatePayout(lastDiagSymbol, count);
-                    payout += winPayout;
-                    this.winningSymbols.push({ symbol: lastDiagSymbol, positions: diagPositions });
-                    console.log(`${name} Win: ${count} ${lastDiagSymbol}s at positions ${JSON.stringify(diagPositions)}. Payout: ${winPayout}`);
-                }
-                count = 1;
-                lastDiagSymbol = diagSymbols[i];
-                diagPositions = [positionsArray[i]];
-            }
-        }
-
-        if (count >= 3) {
-            const winPayout = this.calculatePayout(lastDiagSymbol, count);
-            payout += winPayout;
-            this.winningSymbols.push({ symbol: lastDiagSymbol, positions: diagPositions });
-            console.log(`${name} Win: ${count} ${lastDiagSymbol}s at positions ${JSON.stringify(diagPositions)}. Payout: ${winPayout}`);
-        }
-    });
+    diagonals.forEach(checkLineWin);
 
     return payout;
 }
+
+
+
 
     
 calculatePayout(symbol, count) {
@@ -392,12 +366,12 @@ updateBalance(amount) {
       
     // Make sure the win amount is visible
     winContainer.style.opacity = '1';
-    winContainer.style.fontSize = 16;
+    winContainer.style.fontSize = '34px';
       
-    // Hide the win amount after 0.5 seconds
+    // Hide the win amount after 2.5 seconds
     setTimeout(() => {
       winContainer.style.opacity = '0';
-    }, 2000);
+    }, 2500);
   }
 
 
