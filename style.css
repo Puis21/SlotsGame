@@ -40,7 +40,7 @@ main {
   align-items: center; /* Center horizontally */
   width: 100%;
   padding: 20px; /* Optional: add padding around the main content */
-  background-image: url('SlotGame/assets/BackgroundImage.jpg');
+  background-image: url('/SlotGame/assets/BackgroundImage.jpg');
   background-repeat: no-repeat; /* Prevent image repeating */
   background-size: cover; /* Stretch image to cover the entire container */
   background-position: center; /* Center the image */
@@ -54,7 +54,7 @@ main {
   width: 58%; /* Ensure it stretches to the full width of the container */
   height: 80%;
   background-color: goldenrod;
-  background-image: url('SlotGame/assets/GoldBorder.png');
+  background-image: url('/SlotGame/assets/GoldBorder.png');
   background-repeat: no-repeat; /* Prevent image repeating */
   background-size: cover; /* Stretch image to cover the entire container */
   background-position: center; /* Center the image */
@@ -100,7 +100,7 @@ button {
   border: none;
   cursor: pointer;
   margin-bottom: 20px;
-  background-image: url('SlotGame/assets/RedButton.png'); /* Add your texture image */
+  background-image: url('/SlotGame/assets/RedButton.png'); /* Add your texture image */
   background-size: cover;
   background-repeat: no-repeat;
   background-position: center;
