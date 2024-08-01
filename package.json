@@ -13,5 +13,9 @@
   },
   "dependencies": {
     "phaser": "^3.80.1"
-  }
+  },
+  "description": "<h1 align= \"center\">PLEASE READ FOR MORE INFO ABOUT PROEJCT</h1>",
+  "main": "main.js",
+  "author": "",
+  "license": "ISC"
 }
